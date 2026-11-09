@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lead-Gen Workflow — Case Study</title>
+<meta name="description" content="How I built an automated lead-generation workflow with the Claude API, web search and Clay: 424 companies screened to 69 targets for about $17.">
+<style>
+:root{--bg:#fff;--fg:#14232a;--mute:#5b6871;--acc:#1b6871;--line:#d7e1e3;--card:#f4f8f8}
+@media (prefers-color-scheme:dark){:root{--bg:#101a1e;--fg:#e6eef0;--mute:#9db0b6;--acc:#6cc3cc;--line:#26373d;--card:#16252a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+h1{font-size:2rem;line-height:1.2;margin:.2em 0}
+h2{font-size:1.2rem;color:var(--acc);margin:2.2em 0 .6em;padding-bottom:.3em;border-bottom:1px solid var(--line)}
+.kicker{color:var(--mute);font-size:.9rem;text-transform:uppercase;letter-spacing:.08em}
+.lead{color:var(--mute);font-size:1.1rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:24px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.stat b{display:block;font-size:1.7rem;color:var(--acc)}
+.stat span{color:var(--mute);font-size:.85rem}
+.flow{display:flex;flex-direction:column;gap:0;margin:20px 0}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.step b{color:var(--acc)}
+.step p{margin:.2em 0 0;color:var(--mute);font-size:.95rem}
+.arrow{text-align:center;color:var(--mute);line-height:1.6}
+table{width:100%;border-collapse:collapse;font-size:.95rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:600}
+ul{padding-left:1.2em}li{margin:.35em 0}
+footer{margin-top:3em;color:var(--mute);font-size:.85rem}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+<p class="kicker">Case study · Workflow automation</p>
+<h1>From 424 companies to 69 targets: an automated lead-generation workflow</h1>
+<p class="lead">How I replaced days of manual company research with a pipeline built on the Claude API, web search and Clay, and what I learned about making AI output trustworthy.</p>
+
+<div class="stats">
+  <div class="stat"><b>424</b><span>companies screened</span></div>
+  <div class="stat"><b>69</b><span>confirmed targets</span></div>
+  <div class="stat"><b>~60</b><span>HR decision-makers found</span></div>
+  <div class="stat"><b>~$17</b><span>total cost of the pilot</span></div>
+</div>
+
+<h2>The problem</h2>
+<p>An executive search team needs to know which companies in a region could use its services, and who the right HR decision-maker is at each. Doing this by hand means opening hundreds of websites, checking who owns each company and whether it has offices abroad, and then hunting for contacts. It is slow, and it is hard to repeat for the next city. The all-in-one tool I started from also cost around $90 per city.</p>
+
+<h2>The workflow</h2>
+<div class="flow">
+  <div class="step"><b>1. Source companies</b><p>Pull a list of candidate companies for a region and industry (a paid database, or a free web-search fallback for small markets).</p></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>2. Analyse each company</b><p>For every company, run a web search and have Claude read the results and answer two questions: who actually owns it, and does it have the regional presence we care about? Each answer is stored with its reasoning.</p></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>3. Filter</b><p>Drop what doesn't fit, for example foreign-owned subsidiaries (64 in the pilot), car dealers and trade-show attendees that slip through.</p></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>4. Find the right people</b><p>For each confirmed target, search for HR leaders (CHRO, HR Director, Head of Talent) and have Claude extract names and titles from the results; Clay's people search adds LinkedIn profiles.</p></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>5. Deliver</b><p>Push targets and contacts into the team's Clay workspace automatically, post a summary to Slack, and keep a log of what was already sent so the same company is never pushed twice.</p></div>
+</div>
+<p>It runs from one command: choose a region, an industry and a criterion (for example <em>"has European offices or operations"</em>) and the pipeline does the rest.</p>
+
+<h2>Design decisions</h2>
+<table>
+  <tr><th>Decision</th><th>Why</th></tr>
+  <tr><td>Python + Claude API instead of doing everything in Clay</td><td>Clay is excellent for contact data but expensive for judgement-heavy research. Moving the "reading and deciding" step to the Claude API cut the cost per city by about 80%.</td></tr>
+  <tr><td>Web search feeds the model, rather than asking it from memory</td><td>Ownership and office locations change. Grounding each answer in fresh search results reduces made-up facts, and the evidence is stored for review.</td></tr>
+  <tr><td>Criteria are a parameter, not hard-coded</td><td>The same pipeline serves any search: new region, new industry, new criterion, no code change.</td></tr>
+  <tr><td>Paid and free sourcing modes</td><td>A paid database gives hundreds of companies; a free mode covers niche markets at almost no cost.</td></tr>
+  <tr><td>De-duplication log and Slack summary</td><td>Makes monthly re-runs safe, and the team sees results without opening any tool.</td></tr>
+</table>
+
+<h2>What went wrong first (and how I fixed it)</h2>
+<ul>
+  <li><b>False positives.</b> The first run let through car dealers and companies that only attended trade shows. I improved the ownership-detection prompt and the search queries, and added a quick manual scan as a last check.</li>
+  <li><b>Foreign subsidiaries.</b> Many "local" companies were subsidiaries of foreign groups. Explicit ownership detection removed 64 of them.</li>
+  <li><b>Contact hit rate.</b> People search returned contacts for roughly half of the companies. I treated that as the realistic baseline and planned follow-up checks rather than promising full coverage.</li>
+</ul>
+
+<h2>Results</h2>
+<p>The pilot covered two Indian cities (Pune and Mumbai): <b>424 companies scanned, 69 confirmed targets, about 60 HR contacts</b>, for roughly <b>$17</b> (about $5 in AI usage and about $13 in Clay credits). A further city costs roughly $15 to $30 depending on the search tier. Cost figures are from my own project notes.</p>
+
+<h2>Tools</h2>
+<p>Python · Claude API · web search · Clay · Zapier · Slack webhooks</p>
+
+<footer>
+Built by Sweder van Spanje as part of research and automation work for an executive-search team. Company names, contact details and client information are deliberately left out. <a href="https://linkedin.com/in/sweder-van-spanje-275b9624b">LinkedIn</a>
+</footer>
+</main>
+</body>
+</html>
